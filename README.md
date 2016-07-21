@@ -1,15 +1,19 @@
-# CookedZip
-Creates a zip file for local usage of cooked OpenStax books
+##CookedZip
+####Description
+Used to create a localized zip file of cooked HTML. Resources and inner-book links are modified to work locally.
 
-Naming
-------
-Code is called Tupperware and Spoon since it is taking cooked HTML and placing it in a container. 
+####Dependencies
+This tool uses the following Python packages
 
-Usage
------
-
- * Modify domain in Spoon.py
- * Run
-   * >python Tupperware.py
- * Enter book UUID at the prompt
- * Zip is created in same directory as the code
+ * BeautifulSoup
+ * HTMLParser
+ * json
+ * lxml
+ * urllib2
+ * urlretrieve
+ 
+####Usage
+ * cd to directory of CookedZip
+ * run 'python Tupperware.py'
+ * paste in a book uuid when prompted
+ * the zip file will be built in the CookedZip directory
