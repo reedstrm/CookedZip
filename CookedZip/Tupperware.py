@@ -29,7 +29,8 @@ def write_toc_element(html, json_tree):
     else:
         setup_page(json_tree["id"], json_tree["title"])
         main_files_added.append(book_title + "/" + spoon.remove_version(json_tree["id"]) + ".html")
-        html.write("<a href=\"" + spoon.remove_version(json_tree["id"]) + ".html" + "\">" + json_tree["title"].encode('utf-8') + "</a>\n")
+        linkstr = u'<a href="{}.html">{}</a>\n'.format(spoon.remove_version(json_tree["id"]), json_tree["title"]).encode('utf-8')
+        html.write(linkstr)
 
 
 def setup_page(page_id, title):

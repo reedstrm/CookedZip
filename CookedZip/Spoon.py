@@ -12,7 +12,7 @@ class Spoon:
     def __init__(self):
         self.json = []
         self.page_json = []
-        self.domain = 'http://archive-cte-cnx-dev.cnx.org'
+        self.domain = 'http://archive-dev00.cnx.org'
 
     def load_book_json(self, page_id):
         """
