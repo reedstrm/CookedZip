@@ -18,7 +18,7 @@ class Spoon:
         """
         Load the table of contents (TOC) page of the page whose id is page_id
         """
-        req = urllib2.Request(self.domain + "/contents/" + page_id + ".json")
+        req = urllib2.Request(u'{}/contents/{}.json'.format(self.domain, page_id))
         opener = urllib2.build_opener()
         f = opener.open(req)
         self.json = json.loads(f.read())
@@ -35,13 +35,19 @@ class Spoon:
         """
         return self.beautify(self.json["title"])
 
+    def get_book_id(self):
+        """
+        Returns the title string of the currently loaded TOC page
+        """
+        return self.beautify(self.json["id"])
+
     def load_page(self, page_id):
         """
         fetches page json and returns content HTML
         :param page_id: UUID of page
         :return: content stanza (page html)
         """
-        req = urllib2.Request(self.domain + "/contents/" + page_id + ".json")
+        req = urllib2.Request(u'{}/contents/{}:{}.json'.format(self.domain, self.get_book_id(), page_id))
         opener = urllib2.build_opener()
         f = opener.open(req)
         self.page_json = json.loads(f.read())
@@ -57,7 +63,7 @@ class Spoon:
         parser.feed(page_html)
         return parser.get_resources()
 
-    def save_resource(self,resource_url, book_title):
+    def save_resource(self, resource_url, book_title):
         """
         Saves the given resource URL to a local resources directory.
         Can handle resources that are a UUID and Resources inside a UUID directory
@@ -65,8 +71,8 @@ class Spoon:
         """
         directory = "/".join(resource_url.split("/")[3:5])
         filename = "/".join(resource_url.split("/")[3:])
-        #print directory
-        #print filename
+        # print directory
+        # print filename
         if filename != directory and not os.path.exists(book_title + "/" + directory) and not os.path.exists(book_title + "/" + filename):
             os.makedirs(book_title + "/" + directory)
         urlretrieve(resource_url, book_title + "/" + filename)
@@ -114,7 +120,8 @@ class Spoon:
             shortened_name = page_name
         temp = shortened_name.encode('utf-8').replace(' ', '_') + ".html"
         punclist = ':,-\''
-        for c in punclist: temp = temp.replace(c, "")
+        for c in punclist:
+            temp = temp.replace(c, "")
         return temp
 
     def beautify(self, title):
@@ -133,12 +140,13 @@ class Spoon:
         :return: page json
         """
         try:
-            req = urllib2.Request(self.domain + "/contents/" + page_id + ".json")
+            url = u'{}/contents/{}:{}.json'.format(self.domain, self.get_book_id(), page_id)
+            req = urllib2.Request(url)
             opener = urllib2.build_opener()
             f = opener.open(req)
             return json.loads(f.read())
         except:
-            print "URL: " + self.domain + "/contents/" + page_id + ".json"
+            print "URL: {}".format(url)
             print sys.exc_info()[2]
             pass
 
