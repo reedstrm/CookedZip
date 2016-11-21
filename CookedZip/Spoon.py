@@ -144,11 +144,15 @@ class Spoon:
             req = urllib2.Request(url)
             opener = urllib2.build_opener()
             f = opener.open(req)
-            return json.loads(f.read())
+            page_json = json.loads(f.read())
+            return page_json
         except:
-            print "URL: {}".format(url)
-            print sys.exc_info()[2]
-            pass
+            url = u'{}/contents/{}.json'.format(self.domain, page_id)
+            req = urllib2.Request(url)
+            opener = urllib2.build_opener()
+            f = opener.open(req)
+            page_json = json.loads(f.read())
+            return page_json
 
     def remove_version(self, page_id):
         """
