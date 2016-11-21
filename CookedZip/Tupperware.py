@@ -34,7 +34,7 @@ def write_toc_element(html, json_tree):
 
 
 def setup_page(page_id, title):
-    page_html = spoon.load_page(book_id + ":" + page_id)
+    page_html = spoon.load_page(page_id)
     page_html = page_html.encode('utf-8')
     new_page = string.replace(page_html, '/resources/', 'resources/')
     #print page_id
