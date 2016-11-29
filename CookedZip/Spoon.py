@@ -5,29 +5,51 @@ from urllib import urlretrieve
 import os
 import lxml.html
 from bs4 import BeautifulSoup
-import sys
+
+
+def _walk_content(tree, pages=None):
+    if pages is None:
+        pages = []
+    if 'contents' in tree:
+        for child in tree['contents']:
+            if 'contents' in child:
+                _walk_content(child, pages)
+            else:
+                id = child['id']
+                pages.append(id[:id.find('@')])
+    return pages
 
 
 class Spoon:
     def __init__(self):
         self.json = []
+        self._page_ids = []
         self.page_json = []
         self.domain = 'http://archive-dev00.cnx.org'
+        self.pages = {}
 
     def load_book_json(self, page_id):
         """
         Load the table of contents (TOC) page of the page whose id is page_id
         """
-        req = urllib2.Request(u'{}/contents/{}.json'.format(self.domain, page_id))
+        req = urllib2.Request(u'{}/contents/{}.json'.format(self.domain,
+                                                            page_id))
         opener = urllib2.build_opener()
         f = opener.open(req)
         self.json = json.loads(f.read())
+        self._page_ids = _walk_content(self.json['tree'])
 
     def get_tree(self):
         """
-        Returns the content tree (in json form) of the currently loaded TOC page
+        Returns the content tree (in json) of the currently loaded TOC page
         """
         return self.json["tree"]
+
+    def get_page_ids(self):
+        """
+        Returns a list of pageids that exist in the currently loaded TOC page
+        """
+        return self._page_ids
 
     def get_book_name(self):
         """
@@ -37,9 +59,9 @@ class Spoon:
 
     def get_book_id(self):
         """
-        Returns the title string of the currently loaded TOC page
+        Returns the id string of the currently loaded TOC page
         """
-        return self.beautify(self.json["id"])
+        return u'{}@{}'.format(self.json["id"], self.json['version'])
 
     def load_page(self, page_id):
         """
@@ -47,10 +69,22 @@ class Spoon:
         :param page_id: UUID of page
         :return: content stanza (page html)
         """
-        req = urllib2.Request(u'{}/contents/{}:{}.json'.format(self.domain, self.get_book_id(), page_id))
-        opener = urllib2.build_opener()
-        f = opener.open(req)
-        self.page_json = json.loads(f.read())
+        try:
+            url = u'{}/contents/{}:{}.json'.format(self.domain,
+                                                   self.get_book_id(),
+                                                   page_id)
+            req = urllib2.Request(url)
+            opener = urllib2.build_opener()
+            f = opener.open(req)
+            page_json = json.loads(f.read())
+        except:
+            url = u'{}/contents/{}.json'.format(self.domain, page_id)
+            req = urllib2.Request(url)
+            opener = urllib2.build_opener()
+            f = opener.open(req)
+            page_json = json.loads(f.read())
+
+        self.page_json = page_json
         return self.page_json["content"]
 
     def get_resources(self, page_html):
@@ -66,14 +100,17 @@ class Spoon:
     def save_resource(self, resource_url, book_title):
         """
         Saves the given resource URL to a local resources directory.
-        Can handle resources that are a UUID and Resources inside a UUID directory
+        Can handle resources that are a UUID and Resources inside
+        a UUID directory
         :param resource_url: URL of resource to fetch
         """
         directory = "/".join(resource_url.split("/")[3:5])
         filename = "/".join(resource_url.split("/")[3:])
         # print directory
         # print filename
-        if filename != directory and not os.path.exists(book_title + "/" + directory) and not os.path.exists(book_title + "/" + filename):
+        if (filename != directory
+                and not os.path.exists(book_title + "/" + directory)
+                and not os.path.exists(book_title + "/" + filename)):
             os.makedirs(book_title + "/" + directory)
         urlretrieve(resource_url, book_title + "/" + filename)
 
@@ -87,23 +124,24 @@ class Spoon:
         html = lxml.html.document_fromstring(page_html)
         for element, attribute, link, pos in html.iterlinks():
             if '/contents/' in link and element.text is not None:
-                print "fix_inner_link: " + link
+                print "fix_link: " + link
                 content_index = link.find('/contents/')
-                at_index = link.find('@')
                 pound_index = link.find('#')
                 id = ''
-                if at_index == -1:
+                if pound_index == -1:
                     id = link[content_index + 10:]
                 else:
-                    id = link[content_index + 10:at_index]
+                    id = link[content_index + 10:pound_index]
                 anchor = ''
                 if pound_index > -1:
                     anchor = link[pound_index:]
-                print "fix_inner_link: " + id
-                page = self.get_page_json(id)
-                title = page['id'] + ".html"
-                link_text = title + anchor
-                element.attrib['href'] = link_text
+
+                if self.remove_version(id) in self.get_page_ids():
+                    print "fix_inner_link: " + id
+                    page = self.get_page_json(id)
+                    title = page['id'] + ".html"
+                    link_text = title + anchor
+                    element.attrib['href'] = link_text
         return lxml.html.tostring(html)
 
     def local_url_format(self, page_name):
@@ -131,7 +169,7 @@ class Spoon:
         :return: updated title
         """
         soup = BeautifulSoup(title, 'html.parser')
-        return soup.get_text()
+        return soup.get_text().strip()
 
     def get_page_json(self, page_id):
         """
@@ -139,20 +177,28 @@ class Spoon:
         :param page_id: page id to fetch json for
         :return: page json
         """
+        p_id = self.remove_version(page_id)
+        if p_id in self.pages:
+            return self.pages[p_id]
+
+        page_json = None
         try:
-            url = u'{}/contents/{}:{}.json'.format(self.domain, self.get_book_id(), page_id)
+            url = u'{}/contents/{}:{}.json'.format(self.domain,
+                                                   self.get_book_id(),
+                                                   p_id)
             req = urllib2.Request(url)
             opener = urllib2.build_opener()
             f = opener.open(req)
             page_json = json.loads(f.read())
-            return page_json
         except:
             url = u'{}/contents/{}.json'.format(self.domain, page_id)
             req = urllib2.Request(url)
             opener = urllib2.build_opener()
             f = opener.open(req)
             page_json = json.loads(f.read())
-            return page_json
+
+        self.pages[p_id] = page_json
+        return page_json
 
     def remove_version(self, page_id):
         """
